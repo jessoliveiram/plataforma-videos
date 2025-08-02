@@ -3,46 +3,8 @@ import os
 import sys
 import glob
 import subprocess
-from minio import Minio
-from minio.error import S3Error
+from minio_server import upload_files
 
-MINIO_ENDPOINT = "localhost:9000"
-MINIO_ACCESS_KEY = "minioadmin"
-MINIO_SECRET_KEY = "minioadmin"
-MINIO_BUCKET = "videos-output"
-
-# Inicializa o cliente MinIO
-client = Minio(
-    MINIO_ENDPOINT,
-    access_key=MINIO_ACCESS_KEY,
-    secret_key=MINIO_SECRET_KEY,
-    secure=False
-)
-
-def criar_bucket_se_nao_existir(bucket_name):
-    if not client.bucket_exists(bucket_name):
-        client.make_bucket(bucket_name)
-        print(f"Bucket '{bucket_name}' criado.")
-    else:
-        print(f"Bucket '{bucket_name}' já existe.")
-
-
-
-def upload_todos_arquivos_output_para_minio(bucket_name, pasta_output="output"):
-    arquivos = [f for f in os.listdir(pasta_output) if os.path.isfile(os.path.join(pasta_output, f))]
-    if not arquivos:
-        print(f"Nenhum arquivo encontrado em {pasta_output}")
-        return
-    for file in arquivos:
-        caminho_arquivo = os.path.join(pasta_output, file)
-        caminho_no_bucket = file  # Envia para a raiz do bucket
-        print(f"Enviando {caminho_arquivo} para {bucket_name}/{caminho_no_bucket}")
-        client.fput_object(
-            bucket_name,
-            caminho_no_bucket,
-            caminho_arquivo
-        )
-    print(f"Upload de todos os arquivos da pasta {pasta_output} para MinIO concluído!")
 
 def process_videos_final():
     """
@@ -54,8 +16,6 @@ def process_videos_final():
     if not video_files:
         print("Nenhum vídeo .mp4 encontrado na pasta 'input'.")
         return
-
-    criar_bucket_se_nao_existir(MINIO_BUCKET)
 
     for video_path in video_files:
         base_name = os.path.splitext(os.path.basename(video_path))[0]
@@ -85,8 +45,7 @@ def process_videos_final():
             process.wait()
             if process.returncode == 0:
                 print(f"\n✅ Arquivo {video_path} processado com sucesso!")
-                # Após processar, faz upload dos arquivos gerados desse vídeo
-                upload_todos_arquivos_output_para_minio(MINIO_BUCKET, pasta_output="output")
+                upload_files(base_name)
             else:
                 print(f"\n❌ Erro ao processar o arquivo {video_path}.")
 

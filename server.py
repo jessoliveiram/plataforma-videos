@@ -12,7 +12,7 @@ class DASHRequestHandler(http.server.SimpleHTTPRequestHandler):
     """
     # Mapeamento de extensões para MIME types
     extensions_map = {
-        **http.server.SimpleHTTPRequestHandler.extensions_map, # Herda todos os tipos padrão
+        **http.server.SimpleHTTPRequestHandler.extensions_map, 
         '.mpd': 'application/dash+xml',
         '.m4s': 'video/mp4',
     }
