@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Teste DASH - BigBuckBunny</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.7.7/shaka-player.compiled.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f5f5f5; text-align: center; }
+        video { width: 80vw; max-width: 900px; margin: 2em auto; background: #000; }
+    </style>
+</head>
+<body>
+    <h1>Teste de Streaming MPEG-DASH</h1>
+    <video id="videoPlayer" controls autoplay></video>
+    <p>Se não aparecer vídeo, verifique o console do navegador para mensagens de erro.</p>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if (shaka.Player.isBrowserSupported()) {
+                var video = document.getElementById('videoPlayer');
+                var player = new shaka.Player(video);
+                var url = "http://localhost:8000/output/BigBuckBunny.mpd";
+                player.load(url).then(function() {
+                    console.log('O vídeo foi carregado com sucesso!');
+                }).catch(function(error) {
+                    console.error('Erro ao carregar o vídeo:', error);
+                });
+            } else {
+                alert('Shaka Player não é suportado neste navegador.');
+            }
+        });
+    </script>
+</body>
+</html>
