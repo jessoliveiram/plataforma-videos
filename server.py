@@ -37,29 +37,61 @@ def guess_mime_type(filename):
 
 class MinioDASHHandler(BaseHTTPRequestHandler):
     def do_GET(self):
+        import mimetypes
         path = unquote(self.path)
         if path.startswith("/"):
             path = path[1:]
+        # Servir arquivos estáticos locais se existirem
+        if os.path.isfile(path):
+            self.send_response(200)
+            mime, _ = mimetypes.guess_type(path)
+            self.send_header("Content-type", mime or "application/octet-stream")
+            self.send_cors_headers()
+            self.end_headers()
+            with open(path, "rb") as f:
+                self.wfile.write(f.read())
+            return
         if path == "":
             self.send_response(200)
             self.send_header("Content-type", "text/html")
+            self.send_cors_headers()
             self.end_headers()
             self.wfile.write(b"<h1>Servidor DASH via MinIO</h1>")
             return
+        # Path no formato bucket/arquivo.ext
+        parts = path.split("/", 1)
+        if len(parts) != 2 or not parts[0] or not parts[1]:
+            self.send_response(404)
+            self.end_headers()
+            self.wfile.write(b"Not found")
+            return
+        bucket, obj_path = parts
         try:
-            # Busca o arquivo no bucket output, incluindo subpastas (ex: output/base_name/arquivo.ext)
-            response = client.get_object(MINIO_BUCKET, path)
+            response = client.get_object(bucket, obj_path)
             data = response.read()
-            mime = guess_mime_type(path)
+            mime = guess_mime_type(obj_path)
             self.send_response(200)
             self.send_header("Content-type", mime)
             self.send_header("Content-Length", str(len(data)))
+            self.send_cors_headers()
             self.end_headers()
+            print(f"[DEBUG] Servindo {bucket}/{obj_path} com Content-Type: {mime}")
             self.wfile.write(data)
         except S3Error as e:
             self.send_response(404)
             self.end_headers()
-            self.wfile.write(f"Arquivo não encontrado: {path}".encode())
+            self.wfile.write(f"Arquivo não encontrado: {bucket}/{obj_path}".encode())
+
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.send_cors_headers()
+        self.end_headers()
+
+    def send_cors_headers(self):
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', '*')
+        self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
 
 if __name__ == "__main__":
     print(f"Servidor DASH via MinIO rodando em http://localhost:{PORT}")

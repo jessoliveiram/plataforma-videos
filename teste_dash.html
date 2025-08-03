@@ -18,7 +18,7 @@
             if (shaka.Player.isBrowserSupported()) {
                 var video = document.getElementById('videoPlayer');
                 var player = new shaka.Player(video);
-                var url = "http://localhost:8000/output/BigBuckBunny.mpd";
+                var url = "http://localhost:8000/forbiggerfun/ForBiggerFun.mpd";
                 player.load(url).then(function() {
                     console.log('O vídeo foi carregado com sucesso!');
                 }).catch(function(error) {
