@@ -1,8 +1,7 @@
-
 import os
-import sys
 import glob
 import subprocess
+import shutil
 from minio_server import upload_files
 
 
@@ -47,11 +46,19 @@ def process_videos_final():
             local_path = f"output/{bucket_name}"
             try:
                 upload_files(bucket_name, local_path)
+                if os.path.exists(local_path):
+                    shutil.rmtree(local_path)
+                    print(f"🧹 Pasta {local_path} limpa após upload!")
             except Exception as e:
                 print(f"❌ Erro ao fazer upload para o MinIO: {e}")
+            finally:
+                if os.path.exists(local_path):
+                    shutil.rmtree(local_path)
+                    print(f"🧹 Pasta {local_path} limpa após erro no upload.")
 
         except Exception as e:
             print(f"\n❌ Ocorreu um erro: {e}")
+
 
 if __name__ == "__main__":
     process_videos_final()

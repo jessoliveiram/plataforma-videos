@@ -1,0 +1,19 @@
+# Use a Python base image
+FROM python:3.9-slim
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    && apt-get clean
+
+# Set the working directory
+WORKDIR /app
+
+# Copy the project files
+COPY . /app
+
+# Install Python dependencies
+RUN pip install -r requirements.txt
+
+# Command to run the script
+CMD ["python", "processar_videos.py"]
