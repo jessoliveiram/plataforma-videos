@@ -1,5 +1,3 @@
-
-# --- Servidor HTTP que serve arquivos do MinIO ---
 from minio import Minio
 from minio.error import S3Error
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -36,6 +34,31 @@ def guess_mime_type(filename):
     return MIME_MAP.get(ext, "application/octet-stream")
 
 class MinioDASHHandler(BaseHTTPRequestHandler):
+    def do_POST(self):
+        import io
+        import datetime
+        path = unquote(self.path)
+        if path.startswith("/"):
+            path = path[1:]
+        # Só aceita POST para shaka_metrics.json
+        if path == "shaka_metrics.json":
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length)
+            # Salva o arquivo com timestamp para não sobrescrever
+            timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+            filename = f"shaka_metrics_{timestamp}.json"
+            with open(filename, "wb") as f:
+                f.write(post_data)
+            self.send_response(200)
+            self.send_cors_headers()
+            self.end_headers()
+            self.wfile.write(b"Metricas recebidas e salvas com sucesso.")
+            print(f"[DEBUG] Métricas recebidas e salvas em {filename}")
+        else:
+            self.send_response(404)
+            self.end_headers()
+            self.wfile.write(b"Not found")
+
     def do_GET(self):
         import mimetypes
         path = unquote(self.path)
@@ -92,6 +115,7 @@ class MinioDASHHandler(BaseHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', '*')
         self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+
 
 if __name__ == "__main__":
     print(f"Servidor DASH via MinIO rodando em http://localhost:{PORT}")

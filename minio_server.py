@@ -21,7 +21,6 @@ print("[DEBUG] SECRET_KEY:", SECRET_KEY)
 print("[DEBUG] MINIO_API_HOST:", MINIO_API_HOST)
 
 def start_minio_server():
-    # Verifica se o MinIO já está rodando
     import socket
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
@@ -31,11 +30,10 @@ def start_minio_server():
         return None
     except Exception:
         print("Iniciando o servidor MinIO em background...")
-        # Inicia o MinIO em background (diretório ./minio_data)
         proc = subprocess.Popen([
             "minio", "server", "./minio_data"
         ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        # Aguarda o MinIO subir
+        # Aguarda alguns segundos para garantir que o MinIO esteja pronto
         time.sleep(5)
         return proc
 
@@ -60,9 +58,7 @@ def upload_files(bucket_name, local_path):
             MINIO_CLIENT.fput_object(bucket_name, filename, file_path)
             print(f"Uploaded {filename} to bucket {bucket_name}")
     print("It is successfully uploaded to bucket")
-
-# Comando para listar os buckets
-# mc ls meu-minio 
+    
 
 if __name__ == "__main__":
     proc = start_minio_server()

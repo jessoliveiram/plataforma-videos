@@ -24,6 +24,49 @@
                 }).catch(function(error) {
                     console.error('Erro ao carregar o vídeo:', error);
                 });
+
+                // Métricas de taxa de abandono
+                let watchedTime = 0;
+                let lastTime = 0;
+
+                video.addEventListener('play', function() {
+                    lastTime = video.currentTime;
+                });
+
+                video.addEventListener('pause', function() {
+                    watchedTime += video.currentTime - lastTime;
+                    lastTime = video.currentTime;
+                });
+
+                // Exporta métricas automaticamente ao final do vídeo
+                video.addEventListener('ended', function() {
+                    watchedTime += video.currentTime - lastTime;
+                    const percentWatched = (watchedTime / video.duration) * 100;
+                    const stats = player.getStats();
+                    // Adiciona percentWatched 
+                    stats.percentWatched = percentWatched.toFixed(2);
+                    const blob = new Blob([JSON.stringify(stats, null, 2)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'shaka_metrics.json';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    console.log('Métricas exportadas automaticamente ao final do vídeo.');
+                });
+
+                // Exporta métricas ao abandonar a página (antes de fechar ou recarregar)
+                window.addEventListener('beforeunload', function() {
+                    watchedTime += video.currentTime - lastTime;
+                    const percentWatched = (watchedTime / video.duration) * 100;
+                    const stats = player.getStats();
+                    // Adiciona percentWatched
+                    stats.percentWatched = percentWatched.toFixed(2);
+                    const blob = new Blob([JSON.stringify(stats, null, 2)], { type: 'application/json' });
+                    navigator.sendBeacon && navigator.sendBeacon('/shaka_metrics.json', blob); 
+                });
             } else {
                 alert('Shaka Player não é suportado neste navegador.');
             }
