@@ -35,25 +35,24 @@ def guess_mime_type(filename):
 
 class MinioDASHHandler(BaseHTTPRequestHandler):
     def do_POST(self):
-        import io
-        import datetime
+        from repository import save_metrics_to_db
         path = unquote(self.path)
         if path.startswith("/"):
             path = path[1:]
-        # Só aceita POST para shaka_metrics.json
         if path == "shaka_metrics.json":
             content_length = int(self.headers.get('Content-Length', 0))
             post_data = self.rfile.read(content_length)
-            # Salva o arquivo com timestamp para não sobrescrever
-            timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-            filename = f"shaka_metrics_{timestamp}.json"
-            with open(filename, "wb") as f:
-                f.write(post_data)
+            success, error = save_metrics_to_db(post_data.decode('utf-8'))
+            if not success:
+                self.send_response(400)
+                self.end_headers()
+                self.wfile.write(error.encode())
+                return
             self.send_response(200)
             self.send_cors_headers()
             self.end_headers()
-            self.wfile.write(b"Metricas recebidas e salvas com sucesso.")
-            print(f"[DEBUG] Métricas recebidas e salvas em {filename}")
+            self.wfile.write(b"Metricas recebidas e salvas no banco de dados.")
+            print(f"[DEBUG] Métricas recebidas e salvas no banco de dados.")
         else:
             self.send_response(404)
             self.end_headers()

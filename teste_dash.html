@@ -46,15 +46,8 @@
                     // Adiciona percentWatched 
                     stats.percentWatched = percentWatched.toFixed(2);
                     const blob = new Blob([JSON.stringify(stats, null, 2)], { type: 'application/json' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = 'shaka_metrics.json';
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-                    console.log('Métricas exportadas automaticamente ao final do vídeo.');
+                    navigator.sendBeacon && navigator.sendBeacon('/shaka_metrics.json', blob);
+                    console.log('Métricas enviadas automaticamente ao backend ao final do vídeo.');
                 });
 
                 // Exporta métricas ao abandonar a página (antes de fechar ou recarregar)
