@@ -1,0 +1,10 @@
+[
+  {
+    "src": "http://localhost:8000/bigbuckbunny/bigbuckbunny.mpd",
+    "title": "Big Buck Bunny"
+  },
+  {
+    "src": "http://localhost:8000/forbiggerfun/forbiggerfun.mpd",
+    "title": "For Bigger Fun"
+  }
+]

@@ -12,6 +12,7 @@ def save_metrics_to_db(metrics_json):
         CREATE TABLE IF NOT EXISTS player_metrics (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            username TEXT,
             bitrate REAL,
             width INTEGER,
             height INTEGER,
@@ -21,9 +22,10 @@ def save_metrics_to_db(metrics_json):
         )
     ''')
     c.execute('''
-        INSERT INTO player_metrics (bitrate, width, height, playTime, bufferingTime, percentWatched)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO player_metrics (username, bitrate, width, height, playTime, bufferingTime, percentWatched)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
     ''', (
+        data.get('username'),
         data.get('streamBandwidth'),
         data.get('width'),
         data.get('height'),
