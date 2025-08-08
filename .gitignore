@@ -5,3 +5,4 @@ __pycache__/*
 *.env
 minio_data/*
 .idea/*
+metrics.db
