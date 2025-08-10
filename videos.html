@@ -10,15 +10,21 @@
         #playlist li { background: #fff; margin: 0.5em 0; padding: 1em; border-radius: 8px; cursor: pointer; transition: background 0.2s; }
         #playlist li.active { background: #cce5ff; font-weight: bold; }
         video { width: 80vw; max-width: 900px; margin: 2em auto; background: #000; }
+        .ctx { max-width: 900px; margin: 0 auto; text-align: left; }
+        .ctx input { margin: 0 .5em .5em 0; }
     </style>
 </head>
 <body>
     <h1>Playlist de Streaming MPEG-DASH</h1>
-    <label for="username">Seu nome:</label>
-    <input type="text" id="username" placeholder="Digite seu nome" required style="margin-bottom:1em;">
-    <ul id="playlist">
-      <!-- A lista está em playlist.json -->
-    </ul>
+    <div class="ctx">
+      <label for="username">Nome do aluno:</label>
+      <input type="text" id="username" placeholder="Digite seu nome" required>
+      <label for="studentId">ID/Matrícula:</label>
+      <input type="text" id="studentId" placeholder="ex.: 20201234">
+      <label for="classId">Turma/Disciplina:</label>
+      <input type="text" id="classId" placeholder="ex.: INF1001-T01">
+    </div>
+    <ul id="playlist"></ul>
     <video id="videoPlayer" controls autoplay></video>
     <p>Selecione um vídeo acima para assistir. O próximo será carregado automaticamente ao terminar.</p>
     <script>
@@ -33,6 +39,26 @@
             let playlist = [];
             let current = 0;
 
+            // Contexto
+            const getCtx = () => ({
+              username: document.getElementById('username').value || 'desconhecido',
+              student_id: document.getElementById('studentId').value || null,
+              class_id: document.getElementById('classId').value || null,
+              device_type: detectDeviceType(),
+              user_agent: navigator.userAgent,
+            });
+
+            function detectDeviceType() {
+              const ua = navigator.userAgent.toLowerCase();
+              if (/mobile|iphone|ipod|android.*mobile/.test(ua)) return 'mobile';
+              if (/ipad|tablet|android(?!.*mobile)/.test(ua)) return 'tablet';
+              if (/smart-tv|hbbtv|appletv|googletv/.test(ua)) return 'tv';
+              return 'desktop';
+            }
+
+            // Sessão
+            const sessionId = crypto.randomUUID ? crypto.randomUUID() : String(Date.now())+Math.random().toString(16).slice(2);
+
             function renderPlaylist() {
                 playlistEl.innerHTML = '';
                 playlist.forEach((item, idx) => {
@@ -45,76 +71,139 @@
                 });
             }
 
-            function playVideo(index) {
+            async function playVideo(index) {
                 const src = playlist[index].src;
-                player.load(src).then(function() {
+                const title = playlist[index].title;
+                try {
+                    await player.load(src);
+                    logEvent({ event: 'started', current_time: video.currentTime, video_src: src, video_title: title });
                     console.log('Vídeo carregado:', src);
-                }).catch(function(error) {
+                } catch (error) {
+                    logEvent({ event: 'error', error_code: error.code || 'LOAD_ERROR', error_message: String(error), video_src: src, video_title: title });
                     console.error('Erro ao carregar o vídeo:', error);
-                });
+                }
                 current = index;
                 renderPlaylist();
             }
 
-            // Função para obter o nome do usuário
-            function getUsername() {
-                return document.getElementById('username').value || 'desconhecido';
+            // Buffering
+            let isBuffering = false;
+            let bufferingStartAt = 0;
+
+            // Throttle helper
+            function throttle(fn, wait) {
+              let last = 0; let timer;
+              return function(...args) {
+                const now = Date.now();
+                if (now - last >= wait) { last = now; fn.apply(this, args); }
+                else { clearTimeout(timer); timer = setTimeout(() => { last = Date.now(); fn.apply(this, args); }, wait - (now - last)); }
+              }
             }
 
-            video.addEventListener('ended', function() {
-                if (current + 1 < playlist.length) {
-                    playVideo(current + 1);
-                }
+            // Envio batelado de eventos
+            const queue = [];
+            const flush = throttle(() => {
+              if (!queue.length) return;
+              const payload = { events: queue.splice(0) };
+              const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+              (navigator.sendBeacon && navigator.sendBeacon('/player_events.json', blob)) || fetch('/player_events.json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            }, 2000);
+
+            function logEvent(ev) {
+              const src = playlist[current] ? playlist[current].src : undefined;
+              const title = playlist[current] ? playlist[current].title : undefined;
+              const base = { session_id: sessionId, ...getCtx(), video_src: src || ev.video_src, video_title: title || ev.video_title };
+              if (typeof video.playbackRate === 'number') base.playback_rate = video.playbackRate;
+              queue.push({ ...base, ...ev, timestamp: new Date().toISOString() });
+              flush();
+            }
+
+            // Eventos solicitados
+            video.addEventListener('play', () => logEvent({ event: 'play', current_time: video.currentTime }));
+            video.addEventListener('pause', () => logEvent({ event: 'pause', current_time: video.currentTime }));
+
+            let seekFrom = null;
+            video.addEventListener('seeking', () => { seekFrom = seekFrom === null ? video.currentTime : seekFrom; if (!isBuffering) isBuffering = true, bufferingStartAt = performance.now(); });
+            video.addEventListener('seeked', () => {
+              const to = video.currentTime; const from = seekFrom; seekFrom = null;
+              let bufferDuration = null;
+              if (isBuffering) { bufferDuration = (performance.now() - bufferingStartAt) / 1000; isBuffering = false; }
+              logEvent({ event: 'seek', from_time: from, to_time: to, current_time: to, buffering: bufferDuration !== null ? 0 : null, bufferDuration });
             });
 
-            // Carrega a playlist do arquivo JSON
+            // timeupdate (5s)
+            video.addEventListener('timeupdate', throttle(() => {
+              logEvent({ event: 'timeupdate', current_time: video.currentTime });
+            }, 5000));
+
+            // Buffering via Shaka events
+            player.addEventListener('buffering', (e) => {
+              if (e.buffering) {
+                isBuffering = true; bufferingStartAt = performance.now();
+                logEvent({ event: 'buffering_start', buffering: 1, current_time: video.currentTime });
+              } else {
+                const dur = (performance.now() - bufferingStartAt) / 1000;
+                isBuffering = false;
+                logEvent({ event: 'buffering_end', buffering: 0, bufferDuration: dur, current_time: video.currentTime });
+              }
+            });
+
+            // Qualidade
+            player.addEventListener('adaptation', () => {
+              const stats = player.getStats();
+              logEvent({ event: 'quality_change', width: stats.width, height: stats.height, bandwidth: stats.streamBandwidth, current_time: video.currentTime });
+            });
+
+            // Erros
+            player.addEventListener('error', (e) => {
+              const detail = e.detail || {};
+              logEvent({ event: 'error', error_code: detail.code, error_message: detail.category + ':' + detail.severity, current_time: video.currentTime });
+            });
+
+            // Quartis
+            let quartis = [0.25, 0.5, 0.75];
+            let fired = { 0.25: false, 0.5: false, 0.75: false };
+            video.addEventListener('timeupdate', throttle(() => {
+              if (!video.duration || !isFinite(video.duration)) return;
+              const p = video.currentTime / video.duration;
+              quartis.forEach(q => {
+                if (!fired[q] && p >= q) { fired[q] = true; logEvent({ event: `quartile_${q*100}%`, current_time: video.currentTime }); }
+              });
+            }, 1000));
+
+            video.addEventListener('ended', () => {
+              logEvent({ event: 'complete', current_time: video.duration });
+              if (current + 1 < playlist.length) playVideo(current + 1);
+            });
+
+            // Load playlist
             fetch('playlist.json')
-                .then(res => res.json())
-                .then(data => {
-                    playlist = data;
-                    renderPlaylist();
-                    playVideo(0);
-                })
-                .catch(err => {
-                    playlistEl.innerHTML = '<li>Erro ao carregar playlist.json</li>';
-                });
+              .then(res => res.json())
+              .then(data => { playlist = data; renderPlaylist(); playVideo(0); })
+              .catch(() => { playlistEl.innerHTML = '<li>Erro ao carregar playlist.json</li>'; });
 
-            // Envio de métricas com nome do usuário
-            function sendMetrics(stats) {
-                stats.username = getUsername();
-                const blob = new Blob([JSON.stringify(stats, null, 2)], { type: 'application/json' });
-                navigator.sendBeacon && navigator.sendBeacon('/shaka_metrics.json', blob);
-            }
-
-            // Métricas de taxa de abandono
-            let watchedTime = 0;
-            let lastTime = 0;
-
-            video.addEventListener('play', function() {
-                lastTime = video.currentTime;
-            });
-
-            video.addEventListener('pause', function() {
-                watchedTime += video.currentTime - lastTime;
-                lastTime = video.currentTime;
-            });
-
+            // Métricas agregadas existentes (percentWatched etc.)
+            let watchedTime = 0; let lastTime = 0;
+            video.addEventListener('play', function() { lastTime = video.currentTime; });
+            video.addEventListener('pause', function() { watchedTime += video.currentTime - lastTime; lastTime = video.currentTime; });
             video.addEventListener('ended', function() {
                 watchedTime += video.currentTime - lastTime;
                 const percentWatched = (watchedTime / video.duration) * 100;
                 const stats = player.getStats();
                 stats.percentWatched = percentWatched.toFixed(2);
-                sendMetrics(stats);
-                watchedTime = 0;
-                lastTime = 0;
+                stats.username = getCtx().username;
+                const blob = new Blob([JSON.stringify(stats)], { type: 'application/json' });
+                navigator.sendBeacon && navigator.sendBeacon('/shaka_metrics.json', blob);
+                watchedTime = 0; lastTime = 0;
             });
-
             window.addEventListener('beforeunload', function() {
                 watchedTime += video.currentTime - lastTime;
                 const percentWatched = (watchedTime / video.duration) * 100;
                 const stats = player.getStats();
                 stats.percentWatched = percentWatched.toFixed(2);
-                sendMetrics(stats);
+                stats.username = getCtx().username;
+                const blob = new Blob([JSON.stringify(stats)], { type: 'application/json' });
+                navigator.sendBeacon && navigator.sendBeacon('/shaka_metrics.json', blob);
             });
         });
     </script>

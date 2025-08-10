@@ -1,0 +1,13 @@
+apiVersion: 1
+
+# Datasource provisioning for Grafana
+# This will create/update the SQLite datasource automatically on startup
+
+datasources:
+  - name: frser-sqlite-datasource
+    type: frser-sqlite-datasource
+    access: proxy
+    isDefault: true
+    jsonData:
+      path: /var/lib/grafana/metrics.db
+    editable: true
