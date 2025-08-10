@@ -193,7 +193,7 @@
                 stats.percentWatched = percentWatched.toFixed(2);
                 stats.username = getCtx().username;
                 const blob = new Blob([JSON.stringify(stats)], { type: 'application/json' });
-                navigator.sendBeacon && navigator.sendBeacon('/shaka_metrics.json', blob);
+                navigator.sendBeacon && navigator.sendBeacon('/player_events.json', blob);
                 watchedTime = 0; lastTime = 0;
             });
             window.addEventListener('beforeunload', function() {
@@ -203,7 +203,7 @@
                 stats.percentWatched = percentWatched.toFixed(2);
                 stats.username = getCtx().username;
                 const blob = new Blob([JSON.stringify(stats)], { type: 'application/json' });
-                navigator.sendBeacon && navigator.sendBeacon('/shaka_metrics.json', blob);
+                navigator.sendBeacon && navigator.sendBeacon('/player_events.json', blob);
             });
         });
     </script>
