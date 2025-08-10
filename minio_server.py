@@ -52,6 +52,9 @@ def upload_files(bucket_name, local_path):
         print("Policy de leitura e escrita aplicada ao bucket.")
     else:
         print("Bucket already exists")
+    if not os.path.exists(local_path):
+        print(f"[WARN] Diretório '{local_path}' não existe. Nada para enviar ao bucket '{bucket_name}'.")
+        return
     for filename in os.listdir(local_path):
         file_path = os.path.join(local_path, filename)
         if os.path.isfile(file_path):
