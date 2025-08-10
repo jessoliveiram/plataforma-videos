@@ -12,6 +12,7 @@ docker run --rm \
   --network host \
   minio/minio server /data
 ```
+Após subir o Minio, acesse http://localhost:9000 (usuário/senha: minioadmin/minioadmin).
 
 ## 2. Process
 
@@ -42,3 +43,25 @@ docker run --rm \
   -p 8000:8000 \
   server
 ```
+
+## 4. Grafana 
+
+```
+docker run -d --name=grafana \
+  -p 3000:3000 \
+  -v "$(pwd)/metrics.db:/var/lib/grafana/metrics.db" \
+  grafana/grafana
+```
+
+Depois, dentro do container:
+
+```
+docker exec -it grafana grafana-cli plugins install frser-sqlite-datasource
+docker restart grafana
+```
+
+Após subir o Grafana, acesse http://localhost:3000 (usuário/senha: admin/admin).
+
+Adicione um Data Source do tipo SQLite e aponte para `/var/lib/grafana/metrics.db`.
+
+Agora você pode criar dashboards e visualizar as métricas do player!

@@ -1,0 +1,68 @@
+version: '3.8'
+services:
+  minio:
+    image: minio/minio
+    container_name: minio
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - ./minio_data:/data
+
+  process:
+    build:
+      context: .
+      dockerfile: Dockerfile.process
+    container_name: process
+    volumes:
+      - ./input:/app/input
+      - ./output:/app/output
+      - ./minio_data:/app/minio_data
+      - ./metrics.db:/app/metrics.db
+    environment:
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    depends_on:
+      - minio
+
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    container_name: server
+    volumes:
+      - ./output:/app/output
+      - ./metrics.db:/app/metrics.db
+      - ./videos.html:/app/videos.html
+      - ./repository.py:/app/repository.py
+    environment:
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    ports:
+      - "8000:8000"
+    depends_on:
+      - minio
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./metrics.db:/var/lib/grafana/metrics.db
+      - grafana-plugins:/var/lib/grafana/plugins
+    environment:
+      - GF_INSTALL_PLUGINS=frser-sqlite-datasource
+    restart: unless-stopped
+    depends_on:
+      - server
+
+volumes:
+  grafana-plugins:
+    driver: local

@@ -13,7 +13,7 @@ load_dotenv()
 LOCAL_FILE_PATH = os.environ.get('LOCAL_FILE_PATH')
 ACCESS_KEY = "minioadmin"
 SECRET_KEY = "minioadmin"
-MINIO_API_HOST = "http://localhost:9000"
+MINIO_API_HOST = "http://minio:9000"
 
 # Prints para depuração
 print("[DEBUG] ACCESS_KEY:", ACCESS_KEY)
@@ -24,9 +24,9 @@ def start_minio_server():
     import socket
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
-        s.connect(("localhost", 9000))
+        s.connect(("minio", 9000))
         s.close()
-        print("MinIO já está rodando em localhost:9000")
+        print("MinIO já está rodando em minio:9000")
         return None
     except Exception:
         print("Iniciando o servidor MinIO em background...")
@@ -37,7 +37,7 @@ def start_minio_server():
         time.sleep(5)
         return proc
 
-MINIO_CLIENT = Minio("localhost:9000", access_key=ACCESS_KEY, secret_key=SECRET_KEY, secure=False)
+MINIO_CLIENT = Minio("minio:9000", access_key=ACCESS_KEY, secret_key=SECRET_KEY, secure=False)
 
 
 def upload_files(bucket_name, local_path):
@@ -62,7 +62,7 @@ def upload_files(bucket_name, local_path):
 
 if __name__ == "__main__":
     proc = start_minio_server()
-    print("Você pode conferir no MinIO web em http://localhost:9000")
+    print("Você pode conferir no MinIO web em http://minio:9000")
     if proc:
         print("Servidor MinIO iniciado pelo script. Ele continuará rodando até que você encerre manualmente (Ctrl+C ou kill no terminal).")
         try:
