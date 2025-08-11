@@ -1,3 +1,4 @@
 minio
+sqlite3
 python-dotenv
 opencv-python
