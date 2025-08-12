@@ -51,7 +51,7 @@ def _ensure_columns(cursor):
 def _ensure_indexes_and_views(cursor):
     """Cria índices e views úteis para análises sem alterar o esquema de dados."""
     # Índices para filtros e agrupamentos comuns
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_title_event_time ON player_events(video_title, event, current_time)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_title_event_time ON player_events(video_title, event, \"current_time\")")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_event ON player_events(event)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_username ON player_events(username)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_student ON player_events(student_id)")
@@ -183,7 +183,7 @@ def save_events_to_db(events_json, client_ip=None):
                 session_id, username, student_id, class_id, video_src, video_title, event, current_time,
                 from_time, to_time, buffering, bufferDuration, width, height, bandwidth,
                 playback_rate, error_code, error_message, user_agent, device_type, client_ip, extra_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''',
             (
                 session_id, username, student_id, class_id, video_src, video_title, event, current_time,
