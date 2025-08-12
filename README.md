@@ -26,6 +26,6 @@ docker-compose up --build
 
 Minio: http://localhost:9001
 
-Server: http://localhost:8080/videos.html
+Server: http://localhost:8000/videos.html
 
 Grafana: http://localhost:3000
