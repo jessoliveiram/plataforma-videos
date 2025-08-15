@@ -39,6 +39,7 @@ services:
       - ./output:/app/output
       - ./metrics.db:/app/metrics.db
       - ./videos.html:/app/videos.html
+      - ./playlist.json:/app/playlist.json
       - ./repository.py:/app/repository.py
     environment:
       MINIO_ENDPOINT: minio:9000

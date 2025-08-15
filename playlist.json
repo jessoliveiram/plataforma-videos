@@ -1,13 +1,13 @@
 [ {
-    "src": "http://localhost:8000/aula1/aula1.mpd",
+    "src": "/aula1/aula1.mpd",
     "title": "Introdução aos conceitos da camada de Aplicação"
   },
   {
-    "src": "http://localhost:8000/aula2/aula2.mpd",
+    "src": "/aula2/aula2.mpd",
     "title": "Continuação da camada de aplicação - HTTP e Web Proxies"
   },
    {
-    "src": "http://localhost:8000/aula3/aula3.mpd",
+    "src": "/aula3/aula3.mpd",
     "title": "Sockets em Python e Flask"
   }
 ]
