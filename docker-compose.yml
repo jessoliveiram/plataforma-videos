@@ -70,6 +70,14 @@ services:
     depends_on:
       - server
 
+  simulator:
+    build:
+      context: .
+      dockerfile: Dockerfile.simulator 
+    container_name: simulator
+    depends_on:
+      - server
+
 volumes:
   grafana-plugins:
     driver: local

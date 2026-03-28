@@ -1,0 +1,197 @@
+{
+  "templating": {
+    "list": [
+      {
+        "name": "video_title",
+        "type": "query",
+        "datasource": "frser-sqlite-datasource",
+        "refresh": 1,
+        "query": "SELECT DISTINCT video_title FROM player_events ORDER BY video_title",
+        "definition": "SELECT DISTINCT video_title FROM player_events ORDER BY video_title",
+        "multi": false,
+        "includeAll": true,
+        "allValue": "*",
+        "sort": 1,
+        "label": "Vídeo",
+        "current": {
+          "selected": true,
+          "text": "Todos",
+          "value": "$__all"
+        }
+      },
+      {
+        "name": "username",
+        "type": "query",
+        "datasource": "frser-sqlite-datasource",
+        "refresh": 1,
+        "query": "SELECT DISTINCT username FROM player_events ORDER BY username",
+        "definition": "SELECT DISTINCT username FROM player_events ORDER BY username",
+        "multi": false,
+        "includeAll": true,
+        "allValue": "*",
+        "sort": 1,
+        "label": "Aluno",
+        "current": {
+          "selected": true,
+          "text": "Todos",
+          "value": "$__all"
+        }
+      }
+    ]
+  },
+  "id": null,
+  "title": "Métricas Educacionais de Vídeos",
+  "timezone": "browser",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Taxa de Abandono",
+      "datasource": "frser-sqlite-datasource",
+      "targets": [
+        {
+          "rawSql": "SELECT ROUND(100.0 * (COUNT(DISTINCT session_id) - COUNT(DISTINCT CASE WHEN event = 'complete' THEN session_id END)) / NULLIF(COUNT(DISTINCT session_id), 0), 1) AS taxa_abandono FROM player_events WHERE ('$video_title' = '*' OR video_title = '$video_title')",
+          "queryType": "table",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "%",
+          "colorMode": "value",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 50 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 6 }
+    },
+    {
+      "type": "piechart",
+      "title": "Velocidade de Reprodução Utilizada",
+      "datasource": "frser-sqlite-datasource",
+      "targets": [
+        {
+          "rawSql": "SELECT IFNULL(CAST(playback_rate AS TEXT) || 'x', '1.0x') as velocidade, COUNT(*) as volume_uso FROM player_events WHERE event = 'timeupdate' AND ('$video_title' = '*' OR video_title = '$video_title') GROUP BY velocidade ORDER BY volume_uso DESC;",
+          "queryType": "table",
+          "format": "table"
+        }
+      ],
+      "options": {
+        "pieType": "donut",
+        "tooltip": { "mode": "single", "sort": "none" }
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 14 }
+    },
+    {
+      "type": "barchart",
+      "title": "Erros Encontrados",
+      "datasource": "frser-sqlite-datasource",
+      "targets": [
+        {
+          "rawSql": "SELECT error_code, COUNT(*) as total FROM player_events WHERE event = 'error' AND ('$video_title' = '*' OR video_title = '$video_title') GROUP BY error_code ORDER BY total DESC",
+          "queryType": "table",
+          "format": "table"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 30 }
+    },
+    {
+      "type": "barchart",
+      "title": "Posição de Abandono (s)",
+      "datasource": "frser-sqlite-datasource",
+      "targets": [
+        {
+          "rawSql": "SELECT printf('%02d:%02d', CAST(bucket/60 AS INTEGER), CAST(bucket%60 AS INTEGER)) as posicao, COUNT(*) as abandonos FROM (SELECT session_id, ROUND(MAX(current_time)/10)*10 as bucket, SUM(CASE WHEN event = 'complete' THEN 1 ELSE 0 END) as completou FROM player_events WHERE ('$video_title' = '*' OR video_title = '$video_title') GROUP BY session_id) t WHERE completou = 0 GROUP BY bucket ORDER BY bucket",
+          "queryType": "table",
+          "format": "table"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 30 }
+    },
+    {
+      "type": "barchart",
+      "title": "Sessões por Dia",
+      "datasource": "frser-sqlite-datasource",
+      "targets": [
+        {
+          "rawSql": "SELECT DATE(timestamp) as dia, COUNT(DISTINCT session_id) as sessoes FROM player_events WHERE ('$video_title' = '*' OR video_title = '$video_title') GROUP BY dia ORDER BY dia",
+          "queryType": "table",
+          "format": "table"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 38 }
+    },
+    {
+      "type": "heatmap",
+      "title": "Heatmap de Pausas (Estudiosos)",
+      "datasource": "frser-sqlite-datasource",
+      "targets": [
+        {
+          "rawSql": "SELECT ROUND(current_time / 10) * 10 AS bucket, COUNT(*) AS value FROM player_events WHERE event = 'pause' AND ('$video_title' = '*' OR video_title = '$video_title') AND ('$username' = '*' OR username = '$username') GROUP BY bucket ORDER BY bucket",
+          "queryType": "table",
+          "format": "table"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 46 }
+    },
+    {
+      "type": "heatmap",
+      "title": "Heatmap de Rewinds (Estudiosos)",
+      "datasource": "frser-sqlite-datasource",
+      "targets": [
+        {
+          "rawSql": "SELECT ROUND(to_time / 10) * 10 AS bucket, COUNT(*) AS value FROM player_events WHERE event = 'seek' AND from_time > to_time AND ('$video_title' = '*' OR video_title = '$video_title') AND ('$username' = '*' OR username = '$username') GROUP BY bucket ORDER BY bucket",
+          "queryType": "table",
+          "format": "table"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 46 }
+    },
+    {
+      "type": "stat",
+      "title": "Contagem de Eventos de Buffering",
+      "datasource": "frser-sqlite-datasource",
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(*) as buffering_eventos FROM player_events WHERE event IN ('buffer', 'buffering_start') AND ('$video_title' = '*' OR video_title = '$video_title') AND ('$username' = '*' OR username = '$username')",
+          "queryType": "table",
+          "format": "table"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 54 }
+    },
+    {
+      "type": "barchart",
+      "title": "Tempo Total Assistido por Dia (min)",
+      "datasource": "frser-sqlite-datasource",
+      "targets": [
+        {
+          "rawSql": "SELECT DATE(timestamp) as dia, (COUNT(*) * 5.0) / 60.0 AS minutos_assistidos FROM player_events WHERE event = 'timeupdate' AND ('$video_title' = '*' OR video_title = '$video_title') AND ('$username' = '*' OR username = '$username') GROUP BY dia ORDER BY dia",
+          "queryType": "table",
+          "format": "table"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 }
+    },
+    {
+      "type": "barchart",
+      "title": "Número de Pausas por Dia",
+      "datasource": "frser-sqlite-datasource",
+      "targets": [
+        {
+          "rawSql": "SELECT DATE(timestamp) as dia, COUNT(*) as pausas FROM player_events WHERE event = 'pause' AND ('$video_title' = '*' OR video_title = '$video_title') AND ('$username' = '*' OR username = '$username') GROUP BY dia ORDER BY dia",
+          "queryType": "table",
+          "format": "table"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 22 }
+    }
+  ],
+  "schemaVersion": 36,
+  "version": 1,
+  "refresh": "5s"
+}

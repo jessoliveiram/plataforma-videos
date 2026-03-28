@@ -1,5 +1,4 @@
 output/*
-input/*
 test/*
 __pycache__/*
 *.env

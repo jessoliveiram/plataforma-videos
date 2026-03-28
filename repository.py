@@ -145,7 +145,9 @@ def save_events_to_db(events_json, client_ip=None):
     _ensure_indexes_and_views(c)
 
     for ev in events:
-        # Mapear campos esperados com valores padrão
+        # Pega o timestamp enviado, se não existir, o banco usará o atual depois
+        timestamp_enviado = ev.get('timestamp') 
+
         session_id = ev.get('session_id')
         username = ev.get('username')
         student_id = ev.get('student_id')
@@ -167,12 +169,11 @@ def save_events_to_db(events_json, client_ip=None):
         user_agent = ev.get('user_agent')
         device_type = ev.get('device_type')
 
-        # Captura quaisquer campos extras para persistir no JSON flexível
         known_keys = {
             'session_id','username','student_id','class_id','video_src','video_title','event',
             'current_time','from_time','to_time','buffering','bufferDuration','width','height',
             'bandwidth','bitrate','playback_rate','error_code','error_message','user_agent',
-            'device_type'
+            'device_type', 'timestamp' 
         }
         extra = {k: v for k, v in ev.items() if k not in known_keys}
         extra_json = json.dumps(extra, ensure_ascii=False) if extra else None
@@ -180,13 +181,13 @@ def save_events_to_db(events_json, client_ip=None):
         c.execute(
             '''
             INSERT INTO player_events (
-                session_id, username, student_id, class_id, video_src, video_title, event, current_time,
+                timestamp, session_id, username, student_id, class_id, video_src, video_title, event, current_time,
                 from_time, to_time, buffering, bufferDuration, width, height, bandwidth,
                 playback_rate, error_code, error_message, user_agent, device_type, client_ip, extra_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (COALESCE(?, CURRENT_TIMESTAMP), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''',
             (
-                session_id, username, student_id, class_id, video_src, video_title, event, current_time,
+                timestamp_enviado, session_id, username, student_id, class_id, video_src, video_title, event, current_time,
                 from_time, to_time, buffering, bufferDuration, width, height, bandwidth,
                 playback_rate, error_code, error_message, user_agent, device_type, client_ip, extra_json
             )
@@ -195,5 +196,3 @@ def save_events_to_db(events_json, client_ip=None):
     conn.commit()
     conn.close()
     return True, None
-
-
